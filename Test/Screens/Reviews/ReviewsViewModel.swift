@@ -40,7 +40,6 @@ extension ReviewsViewModel {
             self?.gotReviews(result)
         }
     }
-
 }
 
 // MARK: - Private
@@ -107,14 +106,14 @@ private extension ReviewsViewModel {
 
     func makeReviewItem(_ review: Review, completion: @escaping (ReviewCellConfig) -> Void) {
         DispatchQueue.global(qos: .userInitiated).async {
-            let avatarImage = UIImage(named: "User")
+            let avatarUrl = review.avatarURL
             let username = ("\(review.firstName) \(review.lastName)").attributed(font: .username)
             let reviewText = review.text.attributed(font: .text)
             let created = review.created.attributed(font: .created, color: .created)
             let item = ReviewItem(
                 reviewText: reviewText,
                 created: created,
-                avatarImage: avatarImage,
+                avatarUrl: avatarUrl,
                 username: username,
                 rating: review.rating,
                 onTapShowMore: { [weak self] id in

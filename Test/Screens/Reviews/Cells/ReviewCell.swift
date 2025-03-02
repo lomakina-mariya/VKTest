@@ -9,7 +9,7 @@ struct ReviewCellConfig {
     
     /// Идентификатор конфигурации. Можно использовать для поиска конфигурации в массиве.
     let id = UUID()
-    let avatarImage: UIImage?
+    let avatarUrl: String?
     let username: NSAttributedString
     /// Текст отзыва.
     let reviewText: NSAttributedString
@@ -28,7 +28,7 @@ struct ReviewCellConfig {
     init(
         reviewText: NSAttributedString,
         created: NSAttributedString,
-        avatarImage: UIImage?,
+        avatarUrl: String?,
         username: NSAttributedString,
         rating: Int,
         onTapShowMore: @escaping (UUID) -> Void,
@@ -36,7 +36,7 @@ struct ReviewCellConfig {
     ) {
         self.reviewText = reviewText
         self.created = created
-        self.avatarImage = avatarImage
+        self.avatarUrl = avatarUrl
         self.username = username
         self.rating = rating
         self.onTapShowMore = onTapShowMore
@@ -52,13 +52,17 @@ extension ReviewCellConfig: TableCellConfig {
     /// Вызывается из `cellForRowAt:` у `dataSource` таблицы.
     func update(cell: UITableViewCell) {
         guard let cell = cell as? ReviewCell else { return }
-        cell.avatarImageView.image = avatarImage
         cell.usernameLabel.attributedText = username
         cell.reviewTextLabel.attributedText = reviewText
         cell.reviewTextLabel.numberOfLines = maxLines
         cell.ratingImageView.image = ratingRenderer.ratingImage(rating)
         cell.createdLabel.attributedText = created
         cell.config = self
+        if let avatarUrl = avatarUrl, let url = URL(string: avatarUrl) {
+            cell.avatarImageView.loadImage(from: url, placeholder: UIImage(named: "User"))
+        } else {
+            cell.avatarImageView.image = UIImage(named: "User")
+        }
     }
 
     /// Метод, возвращаюший высоту ячейки с данным ограничением по размеру.

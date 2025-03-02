@@ -29,6 +29,7 @@
 		21ED1F652D69D0340012D6F6 /* ReviewsScreenFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21ED1F642D69D0340012D6F6 /* ReviewsScreenFactory.swift */; };
 		5DB86A612D74744C0064BC92 /* ReviewSummaryCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DB86A602D74744C0064BC92 /* ReviewSummaryCell.swift */; };
 		5DB86A632D74D7160064BC92 /* HeightCaching.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DB86A622D74D7160064BC92 /* HeightCaching.swift */; };
+		5DB86A782D74E3520064BC92 /* UIImageView+Ext.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DB86A772D74E3520064BC92 /* UIImageView+Ext.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -55,6 +56,7 @@
 		21ED1F642D69D0340012D6F6 /* ReviewsScreenFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReviewsScreenFactory.swift; sourceTree = "<group>"; };
 		5DB86A602D74744C0064BC92 /* ReviewSummaryCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReviewSummaryCell.swift; sourceTree = "<group>"; };
 		5DB86A622D74D7160064BC92 /* HeightCaching.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeightCaching.swift; sourceTree = "<group>"; };
+		5DB86A772D74E3520064BC92 /* UIImageView+Ext.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UIImageView+Ext.swift"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -116,6 +118,7 @@
 			children = (
 				21B8416E2D47C4C60085DAA2 /* String+Ext.swift */,
 				216668702D48E4B2009AAA76 /* NSAttributedString+Ext.swift */,
+				5DB86A772D74E3520064BC92 /* UIImageView+Ext.swift */,
 			);
 			path = Extensions;
 			sourceTree = "<group>";
@@ -272,6 +275,7 @@
 				21ED1F622D69CBCD0012D6F6 /* RootView.swift in Sources */,
 				21667B802D4A25B2009AAA76 /* RatingRenderer.swift in Sources */,
 				216668712D48E4B2009AAA76 /* NSAttributedString+Ext.swift in Sources */,
+				5DB86A782D74E3520064BC92 /* UIImageView+Ext.swift in Sources */,
 				21B82E362D47B0D80085DAA2 /* ReviewsProvider.swift in Sources */,
 				21ED1F602D69C85E0012D6F6 /* RootViewController.swift in Sources */,
 				5DB86A632D74D7160064BC92 /* HeightCaching.swift in Sources */,
