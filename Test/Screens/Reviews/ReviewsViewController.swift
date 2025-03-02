@@ -45,6 +45,10 @@ private extension ReviewsViewController {
         viewModel.onStateChange = { [weak reviewsView] _ in
             reviewsView?.tableView.reloadData()
         }
+        viewModel.onLoadingStateChanged = { [weak self] isLoading in
+            DispatchQueue.main.async {
+                self?.reviewsView.setLoading(isLoading)
+            }
+        }
     }
-
 }

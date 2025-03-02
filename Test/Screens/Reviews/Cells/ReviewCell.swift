@@ -59,9 +59,13 @@ extension ReviewCellConfig: TableCellConfig {
         cell.createdLabel.attributedText = created
         cell.config = self
         if let avatarUrl = avatarUrl, let url = URL(string: avatarUrl) {
-            cell.avatarImageView.loadImage(from: url, placeholder: UIImage(named: "User"))
+            cell.activityIndicator.startAnimating()
+            cell.avatarImageView.loadImage(from: url, placeholder: UIImage(named: "User")) {
+                cell.activityIndicator.stopAnimating()
+            }
         } else {
             cell.avatarImageView.image = UIImage(named: "User")
+            cell.activityIndicator.stopAnimating()
         }
     }
 
@@ -79,6 +83,10 @@ extension ReviewCellConfig: TableCellConfig {
 extension ReviewCellConfig: HeightCaching {
     mutating func setHeight(_ height: CGFloat?) {
         cachedHeight = height
+    }
+    
+    mutating func clearHeightCache() {
+        cachedHeight = nil
     }
     
     func getCachedHeight() -> CGFloat? {
@@ -108,6 +116,7 @@ final class ReviewCell: UITableViewCell {
     fileprivate let createdLabel = UILabel()
     fileprivate let showMoreButton = UIButton()
     fileprivate let ratingImageView = UIImageView()
+    fileprivate let activityIndicator = UIActivityIndicatorView(style: .medium)
 
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
@@ -142,6 +151,7 @@ private extension ReviewCell {
         setupRatingImageView()
         setupCreatedLabel()
         setupShowMoreButton()
+        setupActivityIndicator()
     }
     
     func setupAvatarImageView() {
@@ -174,6 +184,16 @@ private extension ReviewCell {
         showMoreButton.contentVerticalAlignment = .fill
         showMoreButton.setAttributedTitle(Config.showMoreText, for: .normal)
         showMoreButton.addTarget(self, action: #selector(didTapShowMore), for: .touchUpInside)
+    }
+    
+    private func setupActivityIndicator() {
+        contentView.addSubview(activityIndicator)
+        activityIndicator.hidesWhenStopped = true // Скрываем, когда остановлен
+        activityIndicator.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            activityIndicator.centerXAnchor.constraint(equalTo: avatarImageView.centerXAnchor),
+            activityIndicator.centerYAnchor.constraint(equalTo: avatarImageView.centerYAnchor)
+        ])
     }
     
     @objc func didTapShowMore() {
