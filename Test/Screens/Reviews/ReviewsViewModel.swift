@@ -9,22 +9,20 @@ final class ReviewsViewModel: NSObject {
     private var state: State
     private let reviewsProvider: ReviewsProvider
     private let ratingRenderer: RatingRenderer
-    private let decoder: JSONDecoder
+    private lazy var decoder: JSONDecoder = {
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        return decoder
+    }()
 
     init(
         state: State = State(),
         reviewsProvider: ReviewsProvider = ReviewsProvider(),
-        ratingRenderer: RatingRenderer = RatingRenderer(),
-        decoder: JSONDecoder = {
-            let decoder = JSONDecoder()
-            decoder.keyDecodingStrategy = .convertFromSnakeCase
-            return decoder
-        }()
+        ratingRenderer: RatingRenderer = RatingRenderer()
     ) {
         self.state = state
         self.reviewsProvider = reviewsProvider
         self.ratingRenderer = ratingRenderer
-        self.decoder = decoder
     }
 }
 
@@ -54,14 +52,26 @@ private extension ReviewsViewModel {
         do {
             let data = try result.get()
             let reviews = try decoder.decode(Reviews.self, from: data)
-            let limitedReviews = reviews.items.prefix(min(state.limit, reviews.count - state.offset))
-            state.items += limitedReviews.map(makeReviewItem)
-            state.offset += state.limit
-            state.shouldLoad = state.offset < reviews.count
+            var newItems: [ReviewCellConfig] = []
+            let dispatchGroup = DispatchGroup()
+            
+            for review in reviews.items.prefix(min(state.limit, reviews.count - state.offset)) {
+                dispatchGroup.enter()
+                makeReviewItem(review) { item in
+                    newItems.append(item)
+                    dispatchGroup.leave()
+                }
+            }
+            dispatchGroup.notify(queue: .main) {
+                self.state.items += newItems
+                self.clearHeightCache()
+                self.state.offset += self.state.limit
+                self.state.shouldLoad = self.state.offset < reviews.count
+                self.onStateChange?(self.state)
+            }
         } catch {
             state.shouldLoad = true
         }
-        onStateChange?(state)
     }
 
     /// Метод, вызываемый при нажатии на кнопку "Показать полностью...".
@@ -75,7 +85,18 @@ private extension ReviewsViewModel {
         state.items[index] = item
         onStateChange?(state)
     }
-
+    
+    func clearHeightCache() {
+        state.items = state.items.map { item in
+            if var cachableItem = item as? HeightCaching {
+                cachableItem.setHeight(nil)
+                if let reviewItem = cachableItem as? ReviewCellConfig {
+                    return reviewItem
+                }
+            }
+            return item
+        }
+    }
 }
 
 // MARK: - Items
@@ -84,22 +105,26 @@ private extension ReviewsViewModel {
 
     typealias ReviewItem = ReviewCellConfig
 
-    func makeReviewItem(_ review: Review) -> ReviewItem {
-        let avatarImage = UIImage(named: "User")
-        let username = ("\(review.firstName) \(review.lastName)").attributed(font: .username)
-        let reviewText = review.text.attributed(font: .text)
-        let created = review.created.attributed(font: .created, color: .created)
-        let item = ReviewItem(
-            reviewText: reviewText,
-            created: created,
-            avatarImage: avatarImage,
-            username: username,
-            rating: review.rating,
-            onTapShowMore: { [weak self] id in
-                self?.showMoreReview(with: id)
+    func makeReviewItem(_ review: Review, completion: @escaping (ReviewCellConfig) -> Void) {
+        DispatchQueue.global(qos: .userInitiated).async {
+            let avatarImage = UIImage(named: "User")
+            let username = ("\(review.firstName) \(review.lastName)").attributed(font: .username)
+            let reviewText = review.text.attributed(font: .text)
+            let created = review.created.attributed(font: .created, color: .created)
+            let item = ReviewItem(
+                reviewText: reviewText,
+                created: created,
+                avatarImage: avatarImage,
+                username: username,
+                rating: review.rating,
+                onTapShowMore: { [weak self] id in
+                    self?.showMoreReview(with: id)
+                }
+            )
+            DispatchQueue.main.async {
+                completion(item)
             }
-        )
-        return item
+        }
     }
     
     func makeSummaryConfig(totalReviews: Int) -> ReviewSummaryCellConfig {
@@ -146,7 +171,26 @@ extension ReviewsViewModel: UITableViewDelegate {
         if indexPath.row == state.items.count {
             return 44.0
         }
-        return state.items[indexPath.row].height(with: tableView.bounds.size)
+        
+        guard let config = state.items[indexPath.row] as? ReviewCellConfig else {
+            return UITableView.automaticDimension
+        }
+    
+        if let cachedHeight = config.getCachedHeight() {
+            return cachedHeight
+        }
+        
+        let width = tableView.bounds.size.width
+        let height = config.height(with: CGSize(width: width, height: .greatestFiniteMagnitude))
+        
+        var updatedConfig = config
+        updatedConfig.setHeight(height)
+        
+        var updatedItems = state.items
+        updatedItems[indexPath.row] = updatedConfig
+        state.items = updatedItems
+        
+        return height
     }
 
     /// Метод дозапрашивает отзывы, если до конца списка отзывов осталось два с половиной экрана по высоте.

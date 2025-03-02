@@ -35,6 +35,9 @@ private extension ReviewsViewController {
         let reviewsView = ReviewsView()
         reviewsView.tableView.delegate = viewModel
         reviewsView.tableView.dataSource = viewModel
+        
+        reviewsView.tableView.rowHeight = UITableView.automaticDimension
+        reviewsView.tableView.estimatedRowHeight = 80
         return reviewsView
     }
 

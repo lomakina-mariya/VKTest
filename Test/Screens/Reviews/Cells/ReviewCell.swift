@@ -3,6 +3,7 @@ import UIKit
 /// Конфигурация ячейки. Содержит данные для отображения в ячейке.
 struct ReviewCellConfig {
     
+    private var cachedHeight: CGFloat?
     /// Идентификатор для переиспользования ячейки.
     static let reuseId = String(describing: ReviewCellConfig.self)
     
@@ -23,6 +24,7 @@ struct ReviewCellConfig {
     /// Объект, хранящий посчитанные фреймы для ячейки отзыва.
     fileprivate let layout = ReviewCellLayout()
     
+    
     init(
         reviewText: NSAttributedString,
         created: NSAttributedString,
@@ -40,13 +42,12 @@ struct ReviewCellConfig {
         self.onTapShowMore = onTapShowMore
         self.ratingRenderer = RatingRenderer(config: ratingRendererConfig)
     }
-    
 }
 
 // MARK: - TableCellConfig
 
 extension ReviewCellConfig: TableCellConfig {
-
+    
     /// Метод обновления ячейки.
     /// Вызывается из `cellForRowAt:` у `dataSource` таблицы.
     func update(cell: UITableViewCell) {
@@ -63,9 +64,22 @@ extension ReviewCellConfig: TableCellConfig {
     /// Метод, возвращаюший высоту ячейки с данным ограничением по размеру.
     /// Вызывается из `heightForRowAt:` делегата таблицы.
     func height(with size: CGSize) -> CGFloat {
-        layout.height(config: self, maxWidth: size.width)
+        if let cached = cachedHeight {
+            return cached
+        }
+        let height = layout.height(config: self, maxWidth: size.width)
+        return height
     }
+}
 
+extension ReviewCellConfig: HeightCaching {
+    mutating func setHeight(_ height: CGFloat?) {
+        cachedHeight = height
+    }
+    
+    func getCachedHeight() -> CGFloat? {
+        return cachedHeight
+    }
 }
 
 // MARK: - Private
