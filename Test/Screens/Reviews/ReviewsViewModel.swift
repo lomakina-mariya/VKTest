@@ -5,28 +5,26 @@ final class ReviewsViewModel: NSObject {
 
     /// Замыкание, вызываемое при изменении `state`.
     var onStateChange: ((State) -> Void)?
+    var onLoadingStateChanged: ((Bool) -> Void)?
 
     private var state: State
     private let reviewsProvider: ReviewsProvider
     private let ratingRenderer: RatingRenderer
-    private let decoder: JSONDecoder
+    private lazy var decoder: JSONDecoder = {
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        return decoder
+    }()
 
     init(
         state: State = State(),
         reviewsProvider: ReviewsProvider = ReviewsProvider(),
-        ratingRenderer: RatingRenderer = RatingRenderer(),
-        decoder: JSONDecoder = {
-            let decoder = JSONDecoder()
-            decoder.keyDecodingStrategy = .convertFromSnakeCase
-            return decoder
-        }()
+        ratingRenderer: RatingRenderer = RatingRenderer()
     ) {
         self.state = state
         self.reviewsProvider = reviewsProvider
         self.ratingRenderer = ratingRenderer
-        self.decoder = decoder
     }
-
 }
 
 // MARK: - Internal
@@ -37,11 +35,14 @@ extension ReviewsViewModel {
 
     /// Метод получения отзывов.
     func getReviews() {
+        onLoadingStateChanged?(true)
         guard state.shouldLoad else { return }
         state.shouldLoad = false
-        reviewsProvider.getReviews(offset: state.offset, completion: gotReviews)
+        reviewsProvider.getReviews(offset: state.offset) { [weak self] result in
+            self?.gotReviews(result)
+            self?.onLoadingStateChanged?(false)
+        }
     }
-
 }
 
 // MARK: - Private
@@ -53,13 +54,26 @@ private extension ReviewsViewModel {
         do {
             let data = try result.get()
             let reviews = try decoder.decode(Reviews.self, from: data)
-            state.items += reviews.items.map(makeReviewItem)
-            state.offset += state.limit
-            state.shouldLoad = state.offset < reviews.count
+            var newItems: [ReviewCellConfig] = []
+            let dispatchGroup = DispatchGroup()
+            
+            for review in reviews.items.prefix(min(state.limit, reviews.count - state.offset)) {
+                dispatchGroup.enter()
+                makeReviewItem(review) { item in
+                    newItems.append(item)
+                    dispatchGroup.leave()
+                }
+            }
+            dispatchGroup.notify(queue: .main) {
+                self.state.items += newItems
+                self.clearHeightCache()
+                self.state.offset += self.state.limit
+                self.state.shouldLoad = self.state.offset < reviews.count
+                self.onStateChange?(self.state)
+            }
         } catch {
             state.shouldLoad = true
         }
-        onStateChange?(state)
     }
 
     /// Метод, вызываемый при нажатии на кнопку "Показать полностью...".
@@ -67,13 +81,29 @@ private extension ReviewsViewModel {
     func showMoreReview(with id: UUID) {
         guard
             let index = state.items.firstIndex(where: { ($0 as? ReviewItem)?.id == id }),
-            var item = state.items[index] as? ReviewItem
+            let item = state.items[index] as? ReviewItem
         else { return }
-        item.maxLines = .zero
-        state.items[index] = item
+        var updatedItem = item
+        updatedItem.maxLines = .zero
+        updatedItem.clearHeightCache()
+        
+        var updatedItems = state.items
+        updatedItems[index] = updatedItem
+        state.items = updatedItems
         onStateChange?(state)
     }
-
+    
+    func clearHeightCache() {
+        state.items = state.items.map { item in
+            if var cachableItem = item as? HeightCaching {
+                cachableItem.setHeight(nil)
+                if let reviewItem = cachableItem as? ReviewCellConfig {
+                    return reviewItem
+                }
+            }
+            return item
+        }
+    }
 }
 
 // MARK: - Items
@@ -82,20 +112,37 @@ private extension ReviewsViewModel {
 
     typealias ReviewItem = ReviewCellConfig
 
-    func makeReviewItem(_ review: Review) -> ReviewItem {
-        let avatarImage = UIImage(named: "User")
-        let username = ("\(review.firstName) \(review.lastName)").attributed(font: .username)
-        let reviewText = review.text.attributed(font: .text)
-        let created = review.created.attributed(font: .created, color: .created)
-        let item = ReviewItem(
-            reviewText: reviewText,
-            created: created,
-            avatarImage: avatarImage,
-            username: username,
-            rating: review.rating,
-            onTapShowMore: showMoreReview
+    func makeReviewItem(_ review: Review, completion: @escaping (ReviewCellConfig) -> Void) {
+        DispatchQueue.global(qos: .userInitiated).async {
+            let avatarUrl = review.avatarURL
+            let username = ("\(review.firstName) \(review.lastName)").attributed(font: .username)
+            let reviewText = review.text.attributed(font: .text)
+            let created = review.created.attributed(font: .created, color: .created)
+            let item = ReviewItem(
+                reviewText: reviewText,
+                created: created,
+                avatarUrl: avatarUrl,
+                username: username,
+                rating: review.rating,
+                onTapShowMore: { [weak self] id in
+                    self?.showMoreReview(with: id)
+                }
+            )
+            DispatchQueue.main.async {
+                completion(item)
+            }
+        }
+    }
+    
+    func makeSummaryConfig(totalReviews: Int) -> ReviewSummaryCellConfig {
+        let text = NSAttributedString(
+            string: "\(totalReviews) отзывов",
+            attributes: [
+                .font: UIFont.reviewCount,
+                .foregroundColor: UIColor.reviewCount
+            ]
         )
-        return item
+        return ReviewSummaryCellConfig(text: text)
     }
 
 }
@@ -105,16 +152,22 @@ private extension ReviewsViewModel {
 extension ReviewsViewModel: UITableViewDataSource {
 
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        state.items.count
+        state.items.count + 1
     }
 
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let config = state.items[indexPath.row]
-        let cell = tableView.dequeueReusableCell(withIdentifier: config.reuseId, for: indexPath)
-        config.update(cell: cell)
-        return cell
+        if indexPath.row < state.items.count {
+            let config = state.items[indexPath.row]
+            let cell = tableView.dequeueReusableCell(withIdentifier: config.reuseId, for: indexPath)
+            config.update(cell: cell)
+            return cell
+        } else {
+            let config = makeSummaryConfig(totalReviews: state.items.count)
+            let cell = tableView.dequeueReusableCell(withIdentifier: ReviewSummaryCellConfig.reuseId, for: indexPath)
+            config.update(cell: cell)
+            return cell
+        }
     }
-
 }
 
 // MARK: - UITableViewDelegate
@@ -122,7 +175,29 @@ extension ReviewsViewModel: UITableViewDataSource {
 extension ReviewsViewModel: UITableViewDelegate {
 
     func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
-        state.items[indexPath.row].height(with: tableView.bounds.size)
+        if indexPath.row == state.items.count {
+            return 44.0
+        }
+        
+        guard let config = state.items[indexPath.row] as? ReviewCellConfig else {
+            return UITableView.automaticDimension
+        }
+    
+        if let cachedHeight = config.getCachedHeight() {
+            return cachedHeight
+        }
+        
+        let width = tableView.bounds.size.width
+        let height = config.height(with: CGSize(width: width, height: .greatestFiniteMagnitude))
+        
+        var updatedConfig = config
+        updatedConfig.setHeight(height)
+        
+        var updatedItems = state.items
+        updatedItems[indexPath.row] = updatedConfig
+        state.items = updatedItems
+        
+        return height
     }
 
     /// Метод дозапрашивает отзывы, если до конца списка отзывов осталось два с половиной экрана по высоте.

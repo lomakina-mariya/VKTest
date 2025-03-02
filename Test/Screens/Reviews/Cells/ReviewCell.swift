@@ -3,12 +3,13 @@ import UIKit
 /// Конфигурация ячейки. Содержит данные для отображения в ячейке.
 struct ReviewCellConfig {
     
+    private var cachedHeight: CGFloat?
     /// Идентификатор для переиспользования ячейки.
     static let reuseId = String(describing: ReviewCellConfig.self)
     
     /// Идентификатор конфигурации. Можно использовать для поиска конфигурации в массиве.
     let id = UUID()
-    let avatarImage: UIImage?
+    let avatarUrl: String?
     let username: NSAttributedString
     /// Текст отзыва.
     let reviewText: NSAttributedString
@@ -23,10 +24,11 @@ struct ReviewCellConfig {
     /// Объект, хранящий посчитанные фреймы для ячейки отзыва.
     fileprivate let layout = ReviewCellLayout()
     
+    
     init(
         reviewText: NSAttributedString,
         created: NSAttributedString,
-        avatarImage: UIImage?,
+        avatarUrl: String?,
         username: NSAttributedString,
         rating: Int,
         onTapShowMore: @escaping (UUID) -> Void,
@@ -34,38 +36,62 @@ struct ReviewCellConfig {
     ) {
         self.reviewText = reviewText
         self.created = created
-        self.avatarImage = avatarImage
+        self.avatarUrl = avatarUrl
         self.username = username
         self.rating = rating
         self.onTapShowMore = onTapShowMore
         self.ratingRenderer = RatingRenderer(config: ratingRendererConfig)
     }
-    
 }
 
 // MARK: - TableCellConfig
 
 extension ReviewCellConfig: TableCellConfig {
-
+    
     /// Метод обновления ячейки.
     /// Вызывается из `cellForRowAt:` у `dataSource` таблицы.
     func update(cell: UITableViewCell) {
         guard let cell = cell as? ReviewCell else { return }
-        cell.avatarImageView.image = avatarImage
         cell.usernameLabel.attributedText = username
         cell.reviewTextLabel.attributedText = reviewText
         cell.reviewTextLabel.numberOfLines = maxLines
         cell.ratingImageView.image = ratingRenderer.ratingImage(rating)
         cell.createdLabel.attributedText = created
         cell.config = self
+        if let avatarUrl = avatarUrl, let url = URL(string: avatarUrl) {
+            cell.activityIndicator.startAnimating()
+            cell.avatarImageView.loadImage(from: url, placeholder: UIImage(named: "User")) {
+                cell.activityIndicator.stopAnimating()
+            }
+        } else {
+            cell.avatarImageView.image = UIImage(named: "User")
+            cell.activityIndicator.stopAnimating()
+        }
     }
 
     /// Метод, возвращаюший высоту ячейки с данным ограничением по размеру.
     /// Вызывается из `heightForRowAt:` делегата таблицы.
     func height(with size: CGSize) -> CGFloat {
-        layout.height(config: self, maxWidth: size.width)
+        if let cached = cachedHeight {
+            return cached
+        }
+        let height = layout.height(config: self, maxWidth: size.width)
+        return height
     }
+}
 
+extension ReviewCellConfig: HeightCaching {
+    mutating func setHeight(_ height: CGFloat?) {
+        cachedHeight = height
+    }
+    
+    mutating func clearHeightCache() {
+        cachedHeight = nil
+    }
+    
+    func getCachedHeight() -> CGFloat? {
+        return cachedHeight
+    }
 }
 
 // MARK: - Private
@@ -90,6 +116,7 @@ final class ReviewCell: UITableViewCell {
     fileprivate let createdLabel = UILabel()
     fileprivate let showMoreButton = UIButton()
     fileprivate let ratingImageView = UIImageView()
+    fileprivate let activityIndicator = UIActivityIndicatorView(style: .medium)
 
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
@@ -124,6 +151,7 @@ private extension ReviewCell {
         setupRatingImageView()
         setupCreatedLabel()
         setupShowMoreButton()
+        setupActivityIndicator()
     }
     
     func setupAvatarImageView() {
@@ -156,6 +184,16 @@ private extension ReviewCell {
         showMoreButton.contentVerticalAlignment = .fill
         showMoreButton.setAttributedTitle(Config.showMoreText, for: .normal)
         showMoreButton.addTarget(self, action: #selector(didTapShowMore), for: .touchUpInside)
+    }
+    
+    private func setupActivityIndicator() {
+        contentView.addSubview(activityIndicator)
+        activityIndicator.hidesWhenStopped = true // Скрываем, когда остановлен
+        activityIndicator.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            activityIndicator.centerXAnchor.constraint(equalTo: avatarImageView.centerXAnchor),
+            activityIndicator.centerYAnchor.constraint(equalTo: avatarImageView.centerYAnchor)
+        ])
     }
     
     @objc func didTapShowMore() {

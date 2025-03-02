@@ -27,6 +27,10 @@
 		21ED1F602D69C85E0012D6F6 /* RootViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21ED1F5F2D69C85E0012D6F6 /* RootViewController.swift */; };
 		21ED1F622D69CBCD0012D6F6 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21ED1F612D69CBCD0012D6F6 /* RootView.swift */; };
 		21ED1F652D69D0340012D6F6 /* ReviewsScreenFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21ED1F642D69D0340012D6F6 /* ReviewsScreenFactory.swift */; };
+		5DB86A612D74744C0064BC92 /* ReviewSummaryCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DB86A602D74744C0064BC92 /* ReviewSummaryCell.swift */; };
+		5DB86A632D74D7160064BC92 /* HeightCaching.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DB86A622D74D7160064BC92 /* HeightCaching.swift */; };
+		5DB86A782D74E3520064BC92 /* UIImageView+Ext.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DB86A772D74E3520064BC92 /* UIImageView+Ext.swift */; };
+		5DB86A922D74FBEA0064BC92 /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = 5DB86A912D74FBEA0064BC92 /* README.md */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -51,6 +55,10 @@
 		21ED1F5F2D69C85E0012D6F6 /* RootViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootViewController.swift; sourceTree = "<group>"; };
 		21ED1F612D69CBCD0012D6F6 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		21ED1F642D69D0340012D6F6 /* ReviewsScreenFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReviewsScreenFactory.swift; sourceTree = "<group>"; };
+		5DB86A602D74744C0064BC92 /* ReviewSummaryCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReviewSummaryCell.swift; sourceTree = "<group>"; };
+		5DB86A622D74D7160064BC92 /* HeightCaching.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeightCaching.swift; sourceTree = "<group>"; };
+		5DB86A772D74E3520064BC92 /* UIImageView+Ext.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UIImageView+Ext.swift"; sourceTree = "<group>"; };
+		5DB86A912D74FBEA0064BC92 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -68,6 +76,7 @@
 			isa = PBXGroup;
 			children = (
 				21B841702D47C5F00085DAA2 /* TableCellConfig.swift */,
+				5DB86A622D74D7160064BC92 /* HeightCaching.swift */,
 			);
 			path = Protocols;
 			sourceTree = "<group>";
@@ -85,6 +94,7 @@
 			isa = PBXGroup;
 			children = (
 				21B82E252D47B0640085DAA2 /* ReviewCell.swift */,
+				5DB86A602D74744C0064BC92 /* ReviewSummaryCell.swift */,
 			);
 			path = Cells;
 			sourceTree = "<group>";
@@ -110,6 +120,7 @@
 			children = (
 				21B8416E2D47C4C60085DAA2 /* String+Ext.swift */,
 				216668702D48E4B2009AAA76 /* NSAttributedString+Ext.swift */,
+				5DB86A772D74E3520064BC92 /* UIImageView+Ext.swift */,
 			);
 			path = Extensions;
 			sourceTree = "<group>";
@@ -142,6 +153,7 @@
 				216668742D48EA59009AAA76 /* Constants */,
 				21B82E222D47B0640085DAA2 /* Extensions */,
 				21B82E242D47B0640085DAA2 /* Resources */,
+				5DB86A912D74FBEA0064BC92 /* README.md */,
 			);
 			path = Test;
 			sourceTree = "<group>";
@@ -248,6 +260,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				5DB86A922D74FBEA0064BC92 /* README.md in Resources */,
 				21B82E3C2D47B2230085DAA2 /* getReviews.response.json in Resources */,
 				21B82E322D47B0640085DAA2 /* Assets.xcassets in Resources */,
 			);
@@ -266,8 +279,10 @@
 				21ED1F622D69CBCD0012D6F6 /* RootView.swift in Sources */,
 				21667B802D4A25B2009AAA76 /* RatingRenderer.swift in Sources */,
 				216668712D48E4B2009AAA76 /* NSAttributedString+Ext.swift in Sources */,
+				5DB86A782D74E3520064BC92 /* UIImageView+Ext.swift in Sources */,
 				21B82E362D47B0D80085DAA2 /* ReviewsProvider.swift in Sources */,
 				21ED1F602D69C85E0012D6F6 /* RootViewController.swift in Sources */,
+				5DB86A632D74D7160064BC92 /* HeightCaching.swift in Sources */,
 				21B82E342D47B0AA0085DAA2 /* ReviewsViewModel.swift in Sources */,
 				21B8416B2D47BFA10085DAA2 /* Reviews.swift in Sources */,
 				21B82E302D47B0640085DAA2 /* ReviewsViewController.swift in Sources */,
@@ -277,6 +292,7 @@
 				21ED1F652D69D0340012D6F6 /* ReviewsScreenFactory.swift in Sources */,
 				2166686F2D48E23F009AAA76 /* Fonts.swift in Sources */,
 				21B82E312D47B0640085DAA2 /* AppDelegate.swift in Sources */,
+				5DB86A612D74744C0064BC92 /* ReviewSummaryCell.swift in Sources */,
 				21B8416F2D47C4C60085DAA2 /* String+Ext.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

@@ -1,7 +1,7 @@
 /// Модель отзыва.
 struct Review: Decodable {
 
-    let avatarImageURL: String?
+    let avatarURL: String?
     let firstName: String
     let lastName: String
     /// Текст отзыва.
