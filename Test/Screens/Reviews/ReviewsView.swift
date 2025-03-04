@@ -22,15 +22,15 @@ final class ReviewsView: UIView {
     }
     
     func setLoading(_ isLoading: Bool) {
-        if isLoading {
-            activityIndicator.startAnimating()
-            tableView.isHidden = true
-        } else {
-            activityIndicator.stopAnimating()
-            tableView.isHidden = false
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            if isLoading {
+                self.activityIndicator.startAnimating()
+            } else {
+                self.activityIndicator.stopAnimating()
+            }
         }
     }
-
 }
 
 // MARK: - Private
@@ -40,6 +40,7 @@ private extension ReviewsView {
     func setupView() {
         backgroundColor = .systemBackground
         setupTableView()
+        setupActivityIndicatorView()
     }
 
     func setupTableView() {

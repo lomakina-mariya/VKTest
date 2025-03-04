@@ -38,12 +38,16 @@ private extension ReviewsViewController {
         
         reviewsView.tableView.rowHeight = UITableView.automaticDimension
         reviewsView.tableView.estimatedRowHeight = 80
+        
+        reviewsView.tableView.tableFooterView = UIView(frame: .zero)
         return reviewsView
     }
 
     func setupViewModel() {
         viewModel.onStateChange = { [weak reviewsView] _ in
-            reviewsView?.tableView.reloadData()
+            DispatchQueue.main.async {
+                reviewsView?.tableView.reloadData()
+            }
         }
         viewModel.onLoadingStateChanged = { [weak self] isLoading in
             DispatchQueue.main.async {

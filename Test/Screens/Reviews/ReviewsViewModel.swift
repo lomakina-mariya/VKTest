@@ -10,6 +10,7 @@ final class ReviewsViewModel: NSObject {
     private var state: State
     private let reviewsProvider: ReviewsProvider
     private let ratingRenderer: RatingRenderer
+    private var isLoading = false
     private lazy var decoder: JSONDecoder = {
         let decoder = JSONDecoder()
         decoder.keyDecodingStrategy = .convertFromSnakeCase
@@ -35,12 +36,24 @@ extension ReviewsViewModel {
 
     /// Метод получения отзывов.
     func getReviews() {
-        onLoadingStateChanged?(true)
-        guard state.shouldLoad else { return }
+        guard !isLoading else { return }
+        isLoading = true
+        
+        DispatchQueue.main.async { [weak self] in
+            self?.onLoadingStateChanged?(true)
+        }
+        
+        guard state.shouldLoad else {
+            onLoadingStateChanged?(false)
+            return
+        }
         state.shouldLoad = false
         reviewsProvider.getReviews(offset: state.offset) { [weak self] result in
             self?.gotReviews(result)
-            self?.onLoadingStateChanged?(false)
+            self?.isLoading = false
+            DispatchQueue.main.async { [weak self] in
+                self?.onLoadingStateChanged?(false)
+            }
         }
     }
 }
@@ -54,26 +67,14 @@ private extension ReviewsViewModel {
         do {
             let data = try result.get()
             let reviews = try decoder.decode(Reviews.self, from: data)
-            var newItems: [ReviewCellConfig] = []
-            let dispatchGroup = DispatchGroup()
-            
-            for review in reviews.items.prefix(min(state.limit, reviews.count - state.offset)) {
-                dispatchGroup.enter()
-                makeReviewItem(review) { item in
-                    newItems.append(item)
-                    dispatchGroup.leave()
-                }
-            }
-            dispatchGroup.notify(queue: .main) {
-                self.state.items += newItems
-                self.clearHeightCache()
-                self.state.offset += self.state.limit
-                self.state.shouldLoad = self.state.offset < reviews.count
-                self.onStateChange?(self.state)
-            }
+            let limitedReviews = reviews.items.prefix(min(state.limit, reviews.count - state.offset))
+            state.items += limitedReviews.map(makeReviewItem)
+            state.offset += state.limit
+            state.shouldLoad = state.offset < reviews.count
         } catch {
             state.shouldLoad = true
         }
+        onStateChange?(state)
     }
 
     /// Метод, вызываемый при нажатии на кнопку "Показать полностью...".
@@ -81,28 +82,11 @@ private extension ReviewsViewModel {
     func showMoreReview(with id: UUID) {
         guard
             let index = state.items.firstIndex(where: { ($0 as? ReviewItem)?.id == id }),
-            let item = state.items[index] as? ReviewItem
+            var item = state.items[index] as? ReviewItem
         else { return }
-        var updatedItem = item
-        updatedItem.maxLines = .zero
-        updatedItem.clearHeightCache()
-        
-        var updatedItems = state.items
-        updatedItems[index] = updatedItem
-        state.items = updatedItems
+        item.maxLines = .zero
+        state.items[index] = item
         onStateChange?(state)
-    }
-    
-    func clearHeightCache() {
-        state.items = state.items.map { item in
-            if var cachableItem = item as? HeightCaching {
-                cachableItem.setHeight(nil)
-                if let reviewItem = cachableItem as? ReviewCellConfig {
-                    return reviewItem
-                }
-            }
-            return item
-        }
     }
 }
 
@@ -112,26 +96,22 @@ private extension ReviewsViewModel {
 
     typealias ReviewItem = ReviewCellConfig
 
-    func makeReviewItem(_ review: Review, completion: @escaping (ReviewCellConfig) -> Void) {
-        DispatchQueue.global(qos: .userInitiated).async {
-            let avatarUrl = review.avatarURL
-            let username = ("\(review.firstName) \(review.lastName)").attributed(font: .username)
-            let reviewText = review.text.attributed(font: .text)
-            let created = review.created.attributed(font: .created, color: .created)
-            let item = ReviewItem(
-                reviewText: reviewText,
-                created: created,
-                avatarUrl: avatarUrl,
-                username: username,
-                rating: review.rating,
-                onTapShowMore: { [weak self] id in
-                    self?.showMoreReview(with: id)
-                }
-            )
-            DispatchQueue.main.async {
-                completion(item)
+    func makeReviewItem(_ review: Review) -> ReviewItem {
+        let avatarURL = review.avatarURL
+        let username = ("\(review.firstName) \(review.lastName)").attributed(font: .username)
+        let reviewText = review.text.attributed(font: .text)
+        let created = review.created.attributed(font: .created, color: .created)
+        let item = ReviewItem(
+            reviewText: reviewText,
+            created: created,
+            avatarUrl: avatarURL,
+            username: username,
+            rating: review.rating,
+            onTapShowMore: { [weak self] id in
+                self?.showMoreReview(with: id)
             }
-        }
+        )
+        return item
     }
     
     func makeSummaryConfig(totalReviews: Int) -> ReviewSummaryCellConfig {
@@ -152,7 +132,7 @@ private extension ReviewsViewModel {
 extension ReviewsViewModel: UITableViewDataSource {
 
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        state.items.count + 1
+        return state.items.count + (state.shouldLoad ? 0 : 1)
     }
 
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
@@ -177,27 +157,11 @@ extension ReviewsViewModel: UITableViewDelegate {
     func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
         if indexPath.row == state.items.count {
             return 44.0
-        }
-        
-        guard let config = state.items[indexPath.row] as? ReviewCellConfig else {
+        } else if indexPath.row < state.items.count {
+            return state.items[indexPath.row].height(with: tableView.bounds.size)
+        } else {
             return UITableView.automaticDimension
         }
-    
-        if let cachedHeight = config.getCachedHeight() {
-            return cachedHeight
-        }
-        
-        let width = tableView.bounds.size.width
-        let height = config.height(with: CGSize(width: width, height: .greatestFiniteMagnitude))
-        
-        var updatedConfig = config
-        updatedConfig.setHeight(height)
-        
-        var updatedItems = state.items
-        updatedItems[indexPath.row] = updatedConfig
-        state.items = updatedItems
-        
-        return height
     }
 
     /// Метод дозапрашивает отзывы, если до конца списка отзывов осталось два с половиной экрана по высоте.
@@ -206,7 +170,7 @@ extension ReviewsViewModel: UITableViewDelegate {
         withVelocity velocity: CGPoint,
         targetContentOffset: UnsafeMutablePointer<CGPoint>
     ) {
-        if shouldLoadNextPage(scrollView: scrollView, targetOffsetY: targetContentOffset.pointee.y) {
+        if shouldLoadNextPage(scrollView: scrollView, targetOffsetY: targetContentOffset.pointee.y) && !isLoading {
             getReviews()
         }
     }
@@ -220,7 +184,7 @@ extension ReviewsViewModel: UITableViewDelegate {
         let contentHeight = scrollView.contentSize.height
         let triggerDistance = viewHeight * screensToLoadNextPage
         let remainingDistance = contentHeight - viewHeight - targetOffsetY
-        return remainingDistance <= triggerDistance
+        return remainingDistance <= triggerDistance && state.shouldLoad
     }
 
 }

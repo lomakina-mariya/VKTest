@@ -80,20 +80,6 @@ extension ReviewCellConfig: TableCellConfig {
     }
 }
 
-extension ReviewCellConfig: HeightCaching {
-    mutating func setHeight(_ height: CGFloat?) {
-        cachedHeight = height
-    }
-    
-    mutating func clearHeightCache() {
-        cachedHeight = nil
-    }
-    
-    func getCachedHeight() -> CGFloat? {
-        return cachedHeight
-    }
-}
-
 // MARK: - Private
 
 private extension ReviewCellConfig {
